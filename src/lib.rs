@@ -19,6 +19,14 @@ cfg_if! {
     }
 }
 
+extern crate web_sys;
+
+macro_rules! log {
+    ( $( $t:tt)* ) => {
+        web_sys::console::log_1(&format!( $( $t ) * ).into());
+    }
+}
+
 #[wasm_bindgen]
 #[repr(u8)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -53,6 +61,17 @@ impl Universe {
         }
         count
     }
+
+    pub fn get_cells(&mut self) -> &FixedBitSet {
+        &self.cells
+    }
+
+    pub fn set_cells(&mut self, cells: &[(u32, u32)]) {
+        for (row, col) in cells.iter().cloned() {
+            let idx = self.get_index(row, col);
+            self.cells.set(idx, true)
+        }
+    }
 }
 
 #[wasm_bindgen]
@@ -64,6 +83,7 @@ impl Universe {
                 let idx = self.get_index(row, col);
                 let cell = self.cells[idx];
                 let live_neighbors = self.live_neighbor_count(row, col);
+
                 next.set(idx, match (cell, live_neighbors) {
                     (true, x) if x < 2 => false,
                     (true, 2) | (true, 3) => true,
@@ -71,11 +91,26 @@ impl Universe {
                     (false, 3) => true,
                     (otherwise, _) => otherwise,
                 });
+                if next[idx] != self.cells[idx] {
+                    log!("cell [{}, {}] changed its status",
+                         col, row);
+                }
             }
         }
 
         self.cells = next;
     }
+
+    pub fn set_width(&mut self, width: u32) {
+        self.width = width;
+        self.cells = (0..width * self.height).map(|_i| 0).collect();
+    }
+
+    pub fn set_height(&mut self, height: u32) {
+        self.height = height;
+        self.cells = (0..self.width * height).map(|_i| 0).collect();
+    }
+
 }
 
 use std::fmt;
@@ -96,6 +131,7 @@ impl fmt::Display for Universe {
 #[wasm_bindgen]
 impl Universe {
     pub fn new() -> Universe {
+        utils::set_panic_hook();
         let width = 64;
         let height = 64;
         let size = (width * height) as usize;
