@@ -91,10 +91,6 @@ impl Universe {
                     (false, 3) => true,
                     (otherwise, _) => otherwise,
                 });
-                if next[idx] != self.cells[idx] {
-                    log!("cell [{}, {}] changed its status",
-                         col, row);
-                }
             }
         }
 
